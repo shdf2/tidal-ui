@@ -5,8 +5,9 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+    container_name: tidal-ui
     ports:
-      - '5000:5000'
+      - '5000:5000'   # tu pourras le commenter plus tard si tu ne veux plus d'accès direct
     restart: unless-stopped
     environment:
       - NODE_ENV=production
@@ -22,7 +23,24 @@ services:
       - REDIS_CACHE_TTL_TRACK_SECONDS=${REDIS_CACHE_TTL_TRACK_SECONDS}
       - REDIS_CACHE_MAX_BODY_BYTES=${REDIS_CACHE_MAX_BODY_BYTES}
       - PORT=5000
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+
+      # HTTPS
+      - "traefik.http.routers.tidal.rule=Host(`flac.zpl.ovh`)"
+      - "traefik.http.routers.tidal.entrypoints=websecure"
+      - "traefik.http.routers.tidal.tls=true"
+      - "traefik.http.routers.tidal.tls.certresolver=myresolver"
+      - "traefik.http.services.tidal.loadbalancer.server.port=5000"
+
+      # HTTP -> HTTPS
+      - "traefik.http.routers.tidal-http.rule=Host(`flac.zpl.ovh`)"
+      - "traefik.http.routers.tidal-http.entrypoints=web"
+      - "traefik.http.routers.tidal-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
 
 networks:
-  default:
-    driver: bridge
+  proxy:
+    external: true
